@@ -23,18 +23,10 @@ No third-party Python packages are needed anywhere.
 ## Quick start
 
 ```bash
-# 1. Build the single-file output
-make
-
-# 2. Start the proxy
-python3 out/sshpytunnel.py --port 1080 user@yourserver.com
-
-# 3. In another terminal, use the proxy
+wget https://github.com/Phasip/sshpytunnel/releases/latest/download/sshpytunnel.py
+python3 sshpytunnel.py --port 1080 user@yourserver.com
 curl --socks5 127.0.0.1:1080 https://example.com
 ```
-
-Point any application that supports SOCKS5 at `127.0.0.1:1080`.
-
 ---
 
 ## Usage
