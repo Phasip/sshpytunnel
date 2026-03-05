@@ -23,10 +23,13 @@ No third-party Python packages are needed anywhere.
 ## Quick start
 
 ```bash
-# 1. Get the single generated file
-python3 sshpytunnel.py --port 1080 user@yourserver.com
+# 1. Build the single-file output
+make
 
-# 2. In another terminal, use the proxy
+# 2. Start the proxy
+python3 out/sshpytunnel.py --port 1080 user@yourserver.com
+
+# 3. In another terminal, use the proxy
 curl --socks5 127.0.0.1:1080 https://example.com
 ```
 
@@ -37,7 +40,7 @@ Point any application that supports SOCKS5 at `127.0.0.1:1080`.
 ## Usage
 
 ```
-python3 sshpytunnel.py [OPTIONS] [SSH-OPTIONS] user@host
+python3 out/sshpytunnel.py [OPTIONS] [SSH-OPTIONS] user@host
 ```
 
 ### Options
@@ -56,16 +59,16 @@ so you can use every SSH flag you know:
 
 ```bash
 # Non-standard SSH port
-python3 sshpytunnel.py -p 2222 user@host
+python3 out/sshpytunnel.py -p 2222 user@host
 
 # Specific identity file
-python3 sshpytunnel.py -i ~/.ssh/id_ed25519 user@host
+python3 out/sshpytunnel.py -i ~/.ssh/id_ed25519 user@host
 
 # Jump host
-python3 sshpytunnel.py -J jumpuser@jumphost user@host
+python3 out/sshpytunnel.py -J jumpuser@jumphost user@host
 
 # Bind SOCKS5 on all interfaces (e.g. to share with a VM)
-python3 sshpytunnel.py --bind 0.0.0.0 --port 1080 user@host
+python3 out/sshpytunnel.py --bind 0.0.0.0 --port 1080 user@host
 ```
 
 ### Test mode
@@ -74,7 +77,7 @@ Runs the server script locally through a shell — no SSH connection made.
 Useful for verifying that everything works before involving a remote host:
 
 ```bash
-python3 sshpytunnel.py --test --verbose
+python3 out/sshpytunnel.py --test --verbose
 # then in another terminal:
 curl --socks5 127.0.0.1:1080 https://example.com
 ```
@@ -104,10 +107,17 @@ curl --socks5 127.0.0.1:1080 https://example.com
 
 ### Bootstrap — no files written to disk
 
-At startup the client `zlib`-compresses and `base64`-encodes the server
-script and passes it as the argument to `python3 -c '…'` on the remote
-host.  If `python3` is not found it falls back to `python`.  The remote
-session's stdin/stdout is then used exclusively for the binary data channel.
+At build time `build.py` embeds `serverside.py` as a raw string literal
+directly into `out/sshpytunnel.py`.  At launch the client opens an SSH
+connection and passes the embedded server code to `python -u -c` on the
+remote host via stdin — the exact byte count is baked into the command so
+no length-prefix handshake is needed, and the rest of stdin is then used
+exclusively for the binary data channel.
+
+The remote interpreter is `python3` by default; use `--srvpycmd python`
+(or any interpreter path) to target a server where only Python 2 is
+available.  The `-u` flag is passed unconditionally to force unbuffered
+stdout so the startup banner arrives immediately.
 
 ### Framing protocol
 
@@ -140,11 +150,14 @@ Makefile          Drives the build
 ```
 
 ```bash
-# Build both output files
+# Build the output file
 make
 
 # Build + syntax-check all files
 make check
+
+# Build, syntax-check, and run integration tests
+make test
 
 # Remove generated files
 make clean
